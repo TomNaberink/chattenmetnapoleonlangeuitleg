@@ -23,7 +23,7 @@ export default function TestChatBot() {
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [isWaitingForStream, setIsWaitingForStream] = useState(false)
-  const [aiModel, setAiModel] = useState<'pro' | 'smart' | 'internet'>('smart') // 'pro' = 2.5 Pro, 'smart' = 2.5 Flash, 'internet' = 2.0
+  const [aiModel, setAiModel] = useState<'pro' | 'smart' | 'internet'>('smart')
   const [useGrounding, setUseGrounding] = useState(true)
   const [groundingData, setGroundingData] = useState<any>(null)
 
@@ -498,8 +498,13 @@ export default function TestChatBot() {
     abortControllerRef.current = new AbortController()
 
     try {
+      // Napoleon persona prompt
+      const napoleonPrompt = `Je bent Napoleon Bonaparte, Keizer van Frankrijk (1769-1821). Antwoord in de eerste persoon alsof je echt Napoleon bent. Gebruik je historische kennis, persoonlijkheid en ervaringen. Spreek met de autoriteit en het zelfvertrouwen die je kenmerkte. Verwijs naar je militaire campagnes, politieke hervormingen, en je visie op Europa. Antwoord in het Nederlands, maar gebruik af en toe Franse uitdrukkingen zoals je deed. Houd je antwoorden informatief maar toegankelijk voor HAVO 5 leerlingen.
+
+Vraag van de leerling: ${message}`
+
       const payload: any = { 
-        message, 
+        message: napoleonPrompt, 
         useGrounding: aiModel === 'internet' ? useGrounding : false,
         aiModel 
       }
@@ -524,11 +529,7 @@ export default function TestChatBot() {
           }
         }).join('\n\n---\n\n')
         
-        if (message.trim()) {
-          payload.message = `${message}\n\n=== BIJGEVOEGDE BESTANDEN ===\n${fileContexts}`
-        } else {
-          payload.message = `Analyseer de volgende bestanden:\n\n${fileContexts}`
-        }
+        payload.message = `${napoleonPrompt}\n\n=== BIJGEVOEGDE BESTANDEN ===\n${fileContexts}`
       }
 
       // Start streaming request
@@ -632,71 +633,6 @@ export default function TestChatBot() {
     }
   }
 
-  // Legacy non-streaming function (fallback)
-  const sendMessage = async () => {
-    const selectedFiles = getSelectedFiles()
-    
-    if (!message.trim() && selectedFiles.length === 0) return
-
-    setIsLoading(true)
-    try {
-      const payload: any = { 
-        message, 
-        useGrounding: aiModel === 'internet' ? useGrounding : false,
-        aiModel 
-      }
-      
-      // Add selected files to payload
-      if (selectedFiles.length > 0) {
-        // Send ALL selected images for Gemini Vision
-        const selectedImages = selectedFiles.filter(file => file.type === 'image')
-        if (selectedImages.length > 0) {
-          payload.images = selectedImages.map(img => img.content)
-        }
-        
-        // Add context from all selected files
-        const fileContexts = selectedFiles.map((file, index) => {
-          const fileType = file.type === 'image' ? 'Afbeelding' : 
-                          file.type === 'document' ? 'Document' : 
-                          file.type === 'audio' ? 'Audio Transcriptie' : 'Data'
-          if (file.type === 'image') {
-            return `[${fileType} ${index + 1}: ${file.name}]\n[Afbeelding bijgevoegd voor analyse]`
-          } else {
-            return `[${fileType}: ${file.name}]\n${file.content}`
-          }
-        }).join('\n\n---\n\n')
-        
-        if (message.trim()) {
-          payload.message = `${message}\n\n=== BIJGEVOEGDE BESTANDEN ===\n${fileContexts}`
-        } else {
-          payload.message = `Analyseer de volgende bestanden:\n\n${fileContexts}`
-        }
-      }
-
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || 'Er is een fout opgetreden')
-      }
-
-      const data = await res.json()
-      setResponse(data.response)
-      setGroundingData(data.grounding || null)
-    } catch (error) {
-      console.error('Error:', error)
-      setResponse('Error: ' + (error instanceof Error ? error.message : 'Onbekende fout'))
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -705,21 +641,21 @@ export default function TestChatBot() {
   }
 
   return (
-    <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-purple-800 mb-4 flex items-center">
-        <span className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center mr-2">
-          <span className="text-white text-sm">💬</span>
+    <div className="bg-gradient-to-br from-red-50 to-blue-50 border-2 border-red-200 rounded-xl p-6 shadow-lg">
+      <h3 className="text-lg font-semibold text-red-800 mb-4 flex items-center">
+        <span className="w-6 h-6 bg-gradient-to-br from-red-600 to-blue-600 rounded-full flex items-center justify-center mr-2">
+          <span className="text-white text-sm">👑</span>
         </span>
-        Test je API Key
+        Chat met Napoleon Bonaparte
       </h3>
       
       <div className="space-y-4">
         {/* File Manager */}
         {uploadedFiles.length > 0 && (
-          <div className="bg-white rounded-lg border border-purple-200 p-4">
+          <div className="bg-white rounded-lg border border-red-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-purple-800 flex items-center">
-                <span className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center mr-2">
+              <h4 className="text-sm font-semibold text-red-800 flex items-center">
+                <span className="w-4 h-4 bg-red-600 rounded-full flex items-center justify-center mr-2">
                   <span className="text-white text-xs">📁</span>
                 </span>
                 Geüploade Bestanden ({uploadedFiles.length})
@@ -727,15 +663,12 @@ export default function TestChatBot() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => getSelectedFiles().length === uploadedFiles.length ? deselectAllFiles() : selectAllFiles()}
-                  className="text-xs text-purple-600 hover:text-purple-800"
+                  className="text-xs text-red-600 hover:text-red-800"
                 >
                   {getSelectedFiles().length === uploadedFiles.length ? 'Deselecteer alles' : 'Selecteer alles'}
                 </button>
                 <span className="text-xs text-gray-500">
                   {getSelectedFiles().length} geselecteerd
-                  {getSelectedFiles().filter(f => f.type === 'image').length > 1 && 
-                    ` (${getSelectedFiles().filter(f => f.type === 'image').length} afbeeldingen)`
-                  }
                 </span>
               </div>
             </div>
@@ -746,8 +679,8 @@ export default function TestChatBot() {
                   key={file.id}
                   className={`border rounded-lg p-3 transition-all cursor-pointer ${
                     file.selected 
-                      ? 'border-purple-500 bg-purple-50' 
-                      : 'border-gray-200 hover:border-purple-300'
+                      ? 'border-red-500 bg-red-50' 
+                      : 'border-gray-200 hover:border-red-300'
                   }`}
                   onClick={() => toggleFileSelection(file.id)}
                 >
@@ -757,7 +690,7 @@ export default function TestChatBot() {
                         type="checkbox"
                         checked={file.selected}
                         onChange={() => toggleFileSelection(file.id)}
-                        className="rounded text-purple-600"
+                        className="rounded text-red-600"
                         onClick={(e) => e.stopPropagation()}
                       />
                       <span className="text-lg">
@@ -805,10 +738,10 @@ export default function TestChatBot() {
           </div>
         )}
 
-        {/* AI Model Selection Cards */}
+        {/* AI Model Selection */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
           <h3 className="text-gray-800 font-medium mb-3">
-            Kies AI Model
+            🧠 Kies AI Model voor Napoleon
           </h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -816,33 +749,19 @@ export default function TestChatBot() {
             <div 
               className={`relative p-3 rounded-lg border-2 cursor-pointer transition-all group hover:shadow-lg hover:scale-105 ${
                 aiModel === 'pro' 
-                  ? 'border-purple-500 bg-purple-50' 
-                  : 'border-gray-200 hover:border-purple-300'
+                  ? 'border-red-500 bg-red-50' 
+                  : 'border-gray-200 hover:border-red-300'
               }`}
               onClick={() => setAiModel('pro')}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className={`w-3 h-3 rounded-full mr-2 ${
-                    aiModel === 'pro' ? 'bg-purple-500' : 'bg-gray-300'
+                    aiModel === 'pro' ? 'bg-red-500' : 'bg-gray-300'
                   }`} />
-                  <span className="font-medium text-purple-700">🏆 Slimste</span>
+                  <span className="font-medium text-red-700">👑 Keizer</span>
                 </div>
-                <span className="text-xs text-purple-600 font-medium">PRO</span>
-              </div>
-              
-              {/* Enhanced Tooltip */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 shadow-xl min-w-max">
-                <div className="text-center">
-                  <div className="font-semibold text-purple-300 mb-1">Gemini 2.5 Pro</div>
-                  <div className="text-xs text-gray-300 mb-2">Beste redeneren en complexe taken</div>
-                  <div className="text-xs border-t border-gray-700 pt-2">
-                    <span className="text-green-400">✓ Hoogste kwaliteit</span><br/>
-                    <span className="text-yellow-400">⚠ Langzaamste responses</span><br/>
-                    <span className="text-blue-400">🎯 Beste voor analyses</span>
-                  </div>
-                </div>
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                <span className="text-xs text-red-600 font-medium">PRO</span>
               </div>
             </div>
 
@@ -850,33 +769,19 @@ export default function TestChatBot() {
             <div 
               className={`relative p-3 rounded-lg border-2 cursor-pointer transition-all group hover:shadow-lg hover:scale-105 ${
                 aiModel === 'smart' 
-                  ? 'border-green-500 bg-green-50' 
-                  : 'border-gray-200 hover:border-green-300'
+                  ? 'border-blue-500 bg-blue-50' 
+                  : 'border-gray-200 hover:border-blue-300'
               }`}
               onClick={() => setAiModel('smart')}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className={`w-3 h-3 rounded-full mr-2 ${
-                    aiModel === 'smart' ? 'bg-green-500' : 'bg-gray-300'
+                    aiModel === 'smart' ? 'bg-blue-500' : 'bg-gray-300'
                   }`} />
-                  <span className="font-medium text-green-700">⚡ Slim</span>
+                  <span className="font-medium text-blue-700">⚡ Generaal</span>
                 </div>
-                <span className="text-xs text-green-600 font-medium">FLASH</span>
-              </div>
-              
-              {/* Enhanced Tooltip */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 shadow-xl min-w-max">
-                <div className="text-center">
-                  <div className="font-semibold text-green-300 mb-1">Gemini 2.5 Flash</div>
-                  <div className="text-xs text-gray-300 mb-2">Goede balans snelheid & kwaliteit</div>
-                  <div className="text-xs border-t border-gray-700 pt-2">
-                    <span className="text-green-400">✓ Snelle responses</span><br/>
-                    <span className="text-green-400">✓ Goede kwaliteit</span><br/>
-                    <span className="text-blue-400">🎯 Beste voor dagelijks gebruik</span>
-                  </div>
-                </div>
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                <span className="text-xs text-blue-600 font-medium">FLASH</span>
               </div>
             </div>
 
@@ -884,59 +789,41 @@ export default function TestChatBot() {
             <div 
               className={`relative p-3 rounded-lg border-2 cursor-pointer transition-all group hover:shadow-lg hover:scale-105 ${
                 aiModel === 'internet' 
-                  ? 'border-blue-500 bg-blue-50' 
-                  : 'border-gray-200 hover:border-blue-300'
+                  ? 'border-green-500 bg-green-50' 
+                  : 'border-gray-200 hover:border-green-300'
               }`}
               onClick={() => setAiModel('internet')}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className={`w-3 h-3 rounded-full mr-2 ${
-                    aiModel === 'internet' ? 'bg-blue-500' : 'bg-gray-300'
+                    aiModel === 'internet' ? 'bg-green-500' : 'bg-gray-300'
                   }`} />
-                  <span className="font-medium text-blue-700">🌐 Internet</span>
+                  <span className="font-medium text-green-700">🌍 Europa</span>
                 </div>
-                <span className="text-xs text-blue-600 font-medium">2.0</span>
-              </div>
-              
-              {/* Enhanced Tooltip */}
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 px-4 py-3 bg-gray-900 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none z-20 shadow-xl min-w-max">
-                <div className="text-center">
-                  <div className="font-semibold text-blue-300 mb-1">Gemini 2.0 Flash</div>
-                  <div className="text-xs text-gray-300 mb-2">Toegang tot actuele informatie</div>
-                  <div className="text-xs border-t border-gray-700 pt-2">
-                    <span className="text-green-400">✓ Actuele info via Google</span><br/>
-                    <span className="text-green-400">✓ Bronvermelding</span><br/>
-                    <span className="text-yellow-400">⚠ Minder slim model</span><br/>
-                    <span className="text-blue-400">🎯 Automatisch Google Search</span>
-                  </div>
-                </div>
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                <span className="text-xs text-green-600 font-medium">2.0</span>
               </div>
             </div>
           </div>
-
-
         </div>
 
         {/* Input Area */}
         <div className={`bg-white rounded-lg border transition-all duration-200 p-3 ${
           isDragOver 
-            ? 'border-purple-500 border-2 bg-purple-50' 
-            : 'border-purple-200'
+            ? 'border-red-500 border-2 bg-red-50' 
+            : 'border-red-200'
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}>
 
-
           {/* Drag & Drop Overlay */}
           {isDragOver && (
-            <div className="absolute inset-2 border-2 border-dashed border-purple-400 rounded-lg bg-purple-50 bg-opacity-90 flex items-center justify-center z-10">
+            <div className="absolute inset-2 border-2 border-dashed border-red-400 rounded-lg bg-red-50 bg-opacity-90 flex items-center justify-center z-10">
               <div className="text-center">
                 <div className="text-4xl mb-2">📁</div>
-                <p className="text-purple-700 font-semibold">Drop bestanden of tekst hier</p>
-                <p className="text-purple-600 text-sm">Afbeeldingen, documenten, of URLs</p>
+                <p className="text-red-700 font-semibold">Drop bestanden hier</p>
+                <p className="text-red-600 text-sm">Voor Napoleon om te analyseren</p>
               </div>
             </div>
           )}
@@ -949,7 +836,7 @@ export default function TestChatBot() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={isDragOver ? "Drop bestanden of tekst hier..." : "Typ een vraag voor Gemini... (of plak met Ctrl+V)"}
+                placeholder={isDragOver ? "Drop bestanden hier..." : "Stel een vraag aan Napoleon Bonaparte... (bijv. 'Vertel over de Slag bij Austerlitz')"}
                 className="w-full p-2 border-0 resize-none focus:outline-none"
                 rows={2}
                 disabled={isLoading}
@@ -967,8 +854,8 @@ export default function TestChatBot() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
-                className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                title="Bestand uploaden (📸 afbeeldingen, 📄 documenten, 📊 data, 🎵 audio)"
+                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Upload historische documenten of afbeeldingen"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -988,9 +875,9 @@ export default function TestChatBot() {
                 className={`p-2 rounded-lg transition-colors ${
                   isListening 
                     ? 'text-red-600 bg-red-50 animate-pulse' 
-                    : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'
+                    : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
                 }`}
-                title={isListening ? "Stop opnamen" : "Start spraakherkenning"}
+                title={isListening ? "Stop opnamen" : "Spreek je vraag in"}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -1001,55 +888,46 @@ export default function TestChatBot() {
               <button
                 onClick={sendMessageStreaming}
                 disabled={(isLoading || isStreaming || isWaitingForStream) || (!message.trim() && getSelectedFiles().length === 0)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-red-600 to-blue-600 text-white rounded-lg hover:from-red-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isWaitingForStream ? '🤔' : isStreaming ? '💭' : isLoading ? '⏳' : '🚀'}
+                {isWaitingForStream ? '👑' : isStreaming ? '💭' : isLoading ? '⏳' : '⚔️'}
               </button>
             </div>
           </div>
-          
-          {/* Upload Status */}
-          {uploadedContent && (
-            <div className="mt-2 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-              ✅ Bestand geüpload ({uploadedContent.length} karakters)
-            </div>
-          )}
           
           {/* Voice Status */}
           {isListening && (
             <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded flex items-center">
               <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-              Luistert...
+              Napoleon luistert...
             </div>
           )}
         </div>
 
-
-
         {/* Response Area */}
         {isWaitingForStream && (
-          <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+          <div className="p-4 bg-gradient-to-r from-red-50 to-blue-50 border border-red-200 rounded-lg">
             <div className="flex items-center space-x-3">
               <div className="flex space-x-1">
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                 <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                <div className="w-3 h-3 bg-indigo-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
               </div>
-              <span className="text-purple-700 font-medium">🧠 Ik ga aan de slag met je slimme prompt!</span>
+              <span className="text-red-700 font-medium">👑 L'Empereur denkt na over uw vraag...</span>
             </div>
-            <p className="text-purple-600 text-sm mt-2 ml-12">Even geduld, ik verzamel alle info en denk na over het beste antwoord... ✨</p>
+            <p className="text-red-600 text-sm mt-2 ml-12">Napoleon verzamelt zijn gedachten en herinneringen... ⚔️</p>
           </div>
         )}
         
         {isLoading && !isStreaming && !isWaitingForStream && (
-          <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-center space-x-2">
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
               </div>
-              <span className="text-purple-700 text-sm">Gemini denkt na...</span>
+              <span className="text-red-700 text-sm">Napoleon formuleert zijn antwoord...</span>
             </div>
           </div>
         )}
@@ -1058,12 +936,12 @@ export default function TestChatBot() {
           <div className={`p-4 rounded-lg ${
             (response && response.startsWith('Error:')) 
               ? 'bg-red-50 border border-red-200' 
-              : 'bg-green-50 border border-green-200'
+              : 'bg-gradient-to-br from-red-50 to-blue-50 border border-red-200'
           }`}>
             <p className={`text-sm font-medium mb-2 ${
               (response && response.startsWith('Error:')) 
                 ? 'text-red-800' 
-                : 'text-green-800'
+                : 'text-red-800'
             }`}>
               <span className="flex items-center">
                 {(response && response.startsWith('Error:')) ? (
@@ -1071,14 +949,14 @@ export default function TestChatBot() {
                 ) : (
                   <>
                     <span className={`w-3 h-3 rounded-full mr-2 ${
-                      isStreaming ? 'bg-blue-600 animate-pulse' : 'bg-green-600'
+                      isStreaming ? 'bg-red-600 animate-pulse' : 'bg-red-600'
                     }`}></span>
-                    {isStreaming ? '🔄 Live Response:' : '✅ Succes! Je API key werkt perfect:'}
+                    {isStreaming ? '👑 Napoleon spreekt...' : '⚔️ Napoleon Bonaparte zegt:'}
                   </>
                 )}
               </span>
             </p>
-            <div className="bg-white p-3 rounded border relative">
+            <div className="bg-white p-4 rounded border-2 border-red-200 relative shadow-inner">
               {(response && response.startsWith('Error:')) ? (
                 <p className="text-gray-700 text-sm whitespace-pre-wrap">
                   {response}
@@ -1090,16 +968,11 @@ export default function TestChatBot() {
                     className="text-gray-700 text-sm"
                   />
                   {isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-purple-600 animate-pulse ml-1 align-text-bottom"></span>
+                    <span className="inline-block w-2 h-4 bg-red-600 animate-pulse ml-1 align-text-bottom"></span>
                   )}
                 </div>
               )}
             </div>
-            {(response && response.startsWith('Error:')) && (
-              <p className="text-red-600 text-xs mt-2">
-                Controleer of je API key correct is ingesteld in .env.local
-              </p>
-            )}
             
             {/* Response Actions - only show for successful responses */}
             {!(response && response.startsWith('Error:')) && (
@@ -1118,26 +991,13 @@ export default function TestChatBot() {
                     <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
                   </svg>
                   <span className="text-blue-800 font-medium text-sm">
-                    Antwoord gebaseerd op actuele Google Search resultaten
+                    Napoleon gebruikt actuele bronnen
                   </span>
                 </div>
                 
-                {groundingData.searchQueries && groundingData.searchQueries.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-blue-700 text-xs font-medium mb-1">Zoekopdrachten:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {groundingData.searchQueries.map((query: string, index: number) => (
-                        <span key={index} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                          "{query}"
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
                 {groundingData.sources && groundingData.sources.length > 0 && (
                   <div>
-                    <p className="text-blue-700 text-xs font-medium mb-2">Bronnen:</p>
+                    <p className="text-blue-700 text-xs font-medium mb-2">Historische bronnen:</p>
                     <div className="space-y-2">
                       {groundingData.sources.slice(0, 3).map((source: any, index: number) => (
                         <div key={index} className="bg-white p-2 rounded border border-blue-200">
@@ -1161,7 +1021,6 @@ export default function TestChatBot() {
                 )}
               </div>
             )}
-
           </div>
         )}
 
@@ -1170,7 +1029,7 @@ export default function TestChatBot() {
           ref={fileInputRef}
           type="file"
           multiple
-                      accept=".docx,.pdf,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp,.bmp,image/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.mp4,.mpeg,.mpga,.webm,audio/*"
+          accept=".docx,.pdf,.txt,.md,.csv,.json,.jpg,.jpeg,.png,.gif,.webp,.bmp,image/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.mp4,.mpeg,.mpga,.webm,audio/*"
           onChange={(e) => {
             const files = e.target.files
             if (files && files.length > 0) {
